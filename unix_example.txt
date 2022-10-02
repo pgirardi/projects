@@ -1,0 +1,149 @@
+Patricia Girardi
+u0894934
+ACG hw 7
+
+
+1. Create a BED file representing all of the intervals in the genome that are NOT exonic.
+
+
+[u0894934@malibu bedtools]$ bedtools complement -i exons.bed -g genome.txt > not_exons.txt
+
+
+
+
+2. What is the average distance from GWAS SNPs to the closest exon? (Hint - have a look at the closest tool.)
+
+
+[u0894934@malibu bedtools]$ bedtools closest -a gwas.bed -b exons.bed -d | awk '{ total += $11 } END { print total/NR }'
+46713.1
+
+
+
+
+3. Count how many exons occur in each 500kb interval (“window”) in the human genome. (Hint - have a look at the makewindows tool.)
+
+
+[u0894934@malibu bedtools]$ bedtools makewindows -g genome.txt -w 500000 > genome.windows.bed
+[u0894934@malibu bedtools]$ bedtools intersect -a genome.windows.bed -b exons.bed -c > genome.windows.exoncount.bedg
+[u0894934@malibu bedtools]$ head -5 genome.windows.exoncount.bedg
+chr1        0        500000        37
+chr1        500000        1000000        197
+chr1        1000000        1500000        477
+chr1        1500000        2000000        445
+chr1        2000000        2500000        209
+
+
+
+
+4. Are there any exons that are completely overlapped by an enhancer? If so, how many?
+
+
+[u0894934@malibu bedtools]$ bedtools intersect -a exons.bed -b hesc.chromHmm.bed -wa -wb -f 1.0 | grep "Enhancer" | wc -l
+13746
+
+
+
+
+5. What fraction of the GWAS SNPs are exonic?
+
+
+[u0894934@malibu bedtools]$ wc -l gwas.bed
+17680 gwas.bed
+[u0894934@malibu bedtools]$ bedtools intersect -a gwas.bed -b exons.bed -u | wc -l
+1625
+
+
+1625/17680 = 0.0919 or ~9.2%
+
+
+
+
+6. What fraction of the GWAS SNPs lie in either enhancers or promoters in the hESC data we have?
+
+
+[u0894934@malibu bedtools]$ bedtools intersect -a gwas.bed -b hesc.chromHmm.bed -wa -wb -f 1.0 | egrep "Enhancer|Promoter" | wc -l
+1285
+
+
+1285/17680 = 0.07268 or ~7.3%
+
+
+
+
+7. Create intervals representing the canonical 2bp splice sites on either side of each exon (don’t worry about excluding splice sites at the first or last exon). (Hint - have a look at the flank tool.)
+
+
+[u0894934@malibu bedtools]$ bedtools flank -l 2 -r 2 -i exons.bed -g genome.txt | head
+chr1        11871        11873        NR_046018_exon_0_0_chr1_11874_f        0        +
+chr1        12227        12229        NR_046018_exon_0_0_chr1_11874_f        0        +
+chr1        12610        12612        NR_046018_exon_1_0_chr1_12613_f        0        +
+chr1        12721        12723        NR_046018_exon_1_0_chr1_12613_f        0        +
+chr1        13218        13220        NR_046018_exon_2_0_chr1_13221_f        0        +
+chr1        14409        14411        NR_046018_exon_2_0_chr1_13221_f        0        +
+chr1        14359        14361        NR_024540_exon_0_0_chr1_14362_r        0        -
+chr1        14829        14831        NR_024540_exon_0_0_chr1_14362_r        0        -
+chr1        14967        14969        NR_024540_exon_1_0_chr1_14970_r        0        -
+chr1        15038        15040        NR_024540_exon_1_0_chr1_14970_r        0        -
+
+
+
+
+8. What is the Jaccard statistic between CpG and hESC enhancers? Compare that to the Jaccard statistic between CpG and hESC promoters. Does the result make sense? (Hint - you will need grep).
+
+
+[u0894934@malibu bedtools]$ bedtools jaccard -a cpg.bed -b <(grep Enhancer hesc.chromHmm.bed)
+intersection        union        jaccard        n_intersections
+1148180        132977386        0.0086344        4969
+
+
+[u0894934@malibu bedtools]$ bedtools jaccard -a cpg.bed -b <(grep Promoter hesc.chromHmm.bed)
+intersection        union        jaccard        n_intersections
+15661111        53551816        0.292448        20402
+
+
+Jaccard statistic “measures the ratio of the number of intersecting base pairs to the total number of base pairs in the two sets” (from bedtools tutorial) and a lower statistic indicates less similarity. Given what I know about CpG islands, it makes sense that we are seeing a higher Jaccard statistic for the comparison between CpG and promoters than CpG and enhancers. That would mean there is more similarity between CpG and promoter bed files than between CpG and enhancer bed files. Which is in line with the fact that CpG islands are known to occur around promoter regions. 
+
+
+
+
+9. What would you expect the Jaccard statistic to look like if promoters were randomly distributed throughout the genome? (Hint - you will need the shuffle tool.)
+
+
+[u0894934@malibu bedtools]$ bedtools shuffle -i <(grep Promoter hesc.chromHmm.bed) -g genome.txt > shuffled_promoters.bed
+
+
+[u0894934@malibu bedtools]$ sort -k1,1 -k2,2n shuffled_promoters.bed > shuffled_promoters.sort.bed
+
+
+[u0894934@malibu bedtools]$ bedtools jaccard -a cpg.bed -b shuffled_promoters.sort.bed
+intersection        union        jaccard        n_intersections
+353145        68498465        0.00515552        840
+
+
+Now that I’m looking back at this, I could’ve piped the sort into the first command, but I forgot about sorting the file until it threw an error when I tried to run the jaccard command on it. Oh well, hindsight is 20/20.
+
+
+Anyways, the random shuffle jaccard is a lot lower than the CpG-Promoter jaccard, but around the same as the CpG-Enhancer jaccard. Which reinforces the assertion that CpGs and promoters overlap more than we would expect from random overlap. 
+
+
+
+
+10. Which hESC ChromHMM state (e.g., 11_Weak_Txn, 10_Txn_Elongation) represents the most number of base pairs in the genome? (Hint: you will need to use awk or perl here, as well as the groupby tool.)
+
+
+# first make a file with the number of bp as a column
+[u0894934@malibu bedtools]$ awk 'BEGIN { OFS = "\t" } NR >= 1 { $5 = $3 - $2 } 1' hesc.chromHmm.bed > hesc.chromHmm_bp.txt
+[u0894934@malibu bedtools]$ head -5 hesc.chromHmm_bp.txt 
+chr1        10000        10600        15_Repetitive/CNV        600
+chr1        10600        11137        13_Heterochrom/lo        537
+chr1        11137        11537        8_Insulator        400
+chr1        11537        11937        11_Weak_Txn        400
+chr1        11937        12137        14_Repetitive/CNV        200
+
+
+# then frankenstein my way through a command that avoids perl and groupby usage because those both scare me )
+## ie sort by name of ChromHMM state and # bp, then get sum of bp for all instances of that state, and then sort again and just got the top value
+
+
+[u0894934@malibu bedtools]$ sort -k5,5 -k6,6n hesc.chromHmm_bp.txt | uniq -c | awk '{arr[$5]+=$6} END {for (i in arr) {print i,arr[i]}}' | sort -k2rn | head -1
+13_Heterochrom/lo 1992618522
