@@ -1,3 +1,3 @@
 # projects
 
-Examples of my code taken from school projects/assignments
+Examples of my code
