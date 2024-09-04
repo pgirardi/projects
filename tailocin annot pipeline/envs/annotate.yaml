@@ -1,0 +1,15 @@
+name: annotate
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.8
+  - vibrant
+  - prodigal
+  - hmmer
+  - biopython
+  - pandas
+  - matplotlib
+  - seaborn
+  - numpy
+  - scikit-learn

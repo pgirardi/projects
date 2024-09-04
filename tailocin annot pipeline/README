@@ -1,0 +1,11 @@
+Explanation of pipeline flow:
+
+1. Create Conda Environment: The create_env rule checks if the annotate environment exists. If not, it creates the environment using the dependencies specified in envs/annotate.yaml.
+
+2. Process Genomes with SLURM: The run_vibrant rule processes each genome file in the input_folder/ using the SLURM scheduler. The output is saved to the specified output_dir.
+
+3. Customizable SLURM Parameters: The SLURM parameters like job name, number of nodes, CPUs, etc., are customizable via the config.yaml file. This allows for flexible adjustments without modifying the Snakefile directly.
+
+4. Flexible Output Directory: Users can specify the output directory within the project directory or outside of it by changing the output_dir path in the config.yaml file.
+
+5. Running the Workflow: To execute the workflow, users store their genomes in the input_folder directory, configure SLURM parameters by editing the config.yaml file as necessary, then navigate to the main project directory and run: snakemake --use-conda --configfile config.yaml --cores 1

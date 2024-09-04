@@ -1,0 +1,51 @@
+import os
+
+# Customizable SLURM parameters and output directory
+configfile: "config.yaml"
+
+# List of input genomes
+input_files = [f for f in os.listdir("input_folder") if f.endswith(".fasta")]
+
+# Rule to create the conda environment if it doesn't exist
+rule create_env:
+    output: "annotate_env_created.txt"
+    shell:
+        """
+        if ! conda info --envs | grep -q "annotate"; then
+            conda create -n annotate -c conda-forge python=3.8 -y
+        fi
+        touch {output}
+        """
+
+# Rule to process each genome using SLURM
+rule run_vibrant:
+    input:
+        genome="input_folder/{genome}"
+    output:
+        "{output_dir}/{genome}.output"
+    params:
+        job_name=config["job_name"],
+        nodes=config["nodes"],
+        cpus=config["cpus"],
+        account=config["account"],
+        partition=config["partition"],
+        output_dir=config["output_dir"]
+    conda:
+        "envs/annotate.yaml"  # Path to conda environment file
+    shell:
+        """
+        sbatch -J {params.job_name} \
+               -N {params.nodes} \
+               -n {params.cpus} \
+               -A {params.account} \
+               -p {params.partition} \
+               -o slurm-%j.out \
+               -e slurm-%j.err \
+               --wrap "VIBRANT_run.py -i {input.genome} -o {params.output_dir}/{wildcards.genome}.output"
+        sleep 50       
+        """
+
+# Rule to run everything
+rule all:
+    input:
+        expand("{output_dir}/{genome}.output", genome=[os.path.splitext(f)[0] for f in input_files], output_dir=config["output_dir"])
