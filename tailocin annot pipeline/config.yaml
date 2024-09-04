@@ -1,6 +1,0 @@
-job_name: "VIBRANT_genomes"                  # SLURM job name
-nodes: 1                                     # Number of nodes to use
-cpus: 1                                      # Number of CPUs to use
-account: "mpag-np"                           # SLURM account name
-partition: "mpag-shared-np"                  # SLURM partition name
-output_dir: "/path/to/external/output_directory"  # Absolute or relative path to the output directory
